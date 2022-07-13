@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
-from numpy import product, unique
-import pandas as pd
+"""GROUP 44: Johnny Nguyen & Majid Mohammed Hamid"""
+
 from os import path
 from inspect import currentframe, getfile
 import mysql.connector as mysql
