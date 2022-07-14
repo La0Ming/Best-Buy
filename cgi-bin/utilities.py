@@ -355,8 +355,6 @@ def write_order(order):
                 )
     #df_orders.to_csv(cmd_folder + 'data/Orders.csv', index=False, encoding='utf-8')
     cnx.execute('''SELECT * FROM Customers''')
-    for row in cnx:
-        print(row)
     cnx.execute('''SELECT * FROM Orders''')
     for row in cnx:
         print(row)
