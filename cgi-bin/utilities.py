@@ -7,6 +7,7 @@ from os import path
 from inspect import currentframe, getfile
 import mysql.connector as mysql
 import var
+import pandas as pd
 
 cmd_folder = path.realpath(
     path.abspath(path.split(getfile(currentframe()))[0])) + '/'
@@ -47,15 +48,17 @@ def get_products_filtered(categories=None):
     #return df.to_dict('records')
     ''' SQL '''
     connection = mysql.connect(user=var.MYSQL_USER,
-                           passwd=var.MYSQL_PASS,
-                           database=var.MYSQL_DATABASE, 
-                           host='127.0.0.1')
+                        passwd=var.MYSQL_PASS,
+                        database=var.MYSQL_DATABASE, 
+                        host='127.0.0.1')
 
     cnx = connection.cursor(dictionary=True)
-    cnx.execute('SELECT * FROM Products WHERE gender = \'' + categories['gender'] + 
-    '\' AND type = \'' + categories['type'] +
-    '\' AND subtype = \'' + categories['subtype'] + '\'' + ';')
-    
+    if categories is None:
+        cnx.execute('SELECT * FROM Products;')
+    else:
+        cnx.execute('SELECT * FROM Products WHERE gender = \'' + categories['gender'] + 
+        '\' AND type = \'' + categories['type'] +
+        '\' AND subtype = \'' + categories['subtype'] + '\'' + ';')
     connection.close()
     return cnx.fetchall()
 
@@ -104,7 +107,7 @@ def get_products_search(values):
     for brand in values:
         query += brand + '%\' OR brand LIKE \'%'
 
-    cnx.execute(query[:-16] + ';') # We remove the last "%\' OR brand LIKE \'%" from the query
+    cnx.execute(query[:-16] + ';') # We remove the last "OR brand LIKE \'%" from the query
 
     connection.close()
     return cnx.fetchall()
@@ -295,6 +298,8 @@ def write_order(order):
 
     # df_orders = pd.read_csv(cmd_folder + 'data/Orders.csv')
     # Get new order ID
+    cnx.execute('SELECT MAX(orderid) FROM Orders;')
+    orderID = cnx.fetchone()['MAX(orderid)'] + 1
     # orderID = df_orders['orderid'].max() + 1
     # Grab the products id number and the amount of each product
     item_ids = list(map(int, order['items'].strip('[]').split(',')))
@@ -327,15 +332,25 @@ def write_order(order):
         raise Exception("Beställnings formulär(Ort) saknas. Försök igen...")
     #
 
-    cnx.execute(
-            '''INSERT INTO Customers (firstname, lastname, email, street, city, zipcode)
-            VALUES ('{}', '{}', '{}', '{}', '{}', '{}');'''.format(
-            firstname, lastname, email, address, town, zipcode
-    ))
-    
-    # Get customer ID
-    cnx.execute('SELECT MAX(id) FROM Customers;')
-    customerID = cnx.fetchone()['MAX(id)']
+    cnx.execute('SELECT id FROM Customers WHERE firstname = \'' + firstname +
+    '\' AND lastname = \'' + lastname +
+    '\' AND street = \'' + address +
+    '\' AND city = \'' + town +
+    '\' AND zipcode = ' + zipcode + ';'
+    )
+    customerID = cnx.fetchone()
+
+    # If the customer does not already exist in the DB, make a new entry
+    if customerID is None:
+        # Get new customer ID
+        cnx.execute('SELECT MAX(id) FROM Customers;')
+        customerID = cnx.fetchone()['MAX(id)'] + 1
+
+        cnx.execute(
+                '''INSERT INTO Customers
+                VALUES ('{}', '{}', '{}', '{}', '{}', '{}', '{}');'''.format(
+                firstname, lastname, address, town, zipcode, customerID, email
+        ))
 
     # Write the actual order
     #df_products = pd.read_csv(cmd_folder + 'data/Products.csv')
@@ -348,16 +363,19 @@ def write_order(order):
         #     product['subtype'], product['color'], product['gender'],
         #     product['price'], product['size'], item['amount']
         # ]
-        cnx.execute('''INSERT INTO Orders (customerid, productid, amount)
-                    VALUES ({}, {}, {});'''.format(
-                        customerID, item['id'], item['amount']
+        cnx.execute('''INSERT INTO Orders
+                    VALUES ({}, {}, {}, {});'''.format(
+                        orderID, customerID, item['id'], item['amount']
                     )
                 )
+    
+    # Debugging
+    # cnx.execute('''SELECT * FROM Customers''')
+    # cnx.execute('''SELECT * FROM Orders''')
+    # for row in cnx:
+    #     print(row)
+
     #df_orders.to_csv(cmd_folder + 'data/Orders.csv', index=False, encoding='utf-8')
-    cnx.execute('''SELECT * FROM Customers''')
-    cnx.execute('''SELECT * FROM Orders''')
-    for row in cnx:
-        print(row)
     connection.close()
 
 
@@ -399,7 +417,7 @@ def get_20_most_popular():
     cnx = connection.cursor(dictionary=True)
 
     cnx.execute(
-        'SELECT DISTINCT productid, COUNT(productid) AS `top` FROM Orders ORDER BY `top` DESC LIMIT 0,20;'
+        'SELECT DISTINCT productid, COUNT(productid) AS `top` FROM Orders GROUP BY productid ORDER BY `top` DESC LIMIT 0,20;'
         )
 
     result = []
@@ -410,7 +428,7 @@ def get_20_most_popular():
         cnx.execute(
             'SELECT * FROM Products WHERE id = {};'.format(row['productid'])
             )
-        result += cnx.fetchone()
+        result += cnx.fetchall()
 
     connection.close()
     return result
