@@ -294,7 +294,7 @@ def write_order(order):
                            database=var.MYSQL_DATABASE, 
                            host='127.0.0.1')
 
-    cnx = connection.cursor(dictionary=True)
+    cnx = connection.cursor(dictionary=True, buffered=True)
 
     # df_orders = pd.read_csv(cmd_folder + 'data/Orders.csv')
     # Get new order ID
@@ -344,7 +344,7 @@ def write_order(order):
     if customerID is None:
         # Get new customer ID
         cnx.execute('SELECT MAX(id) FROM Customers;')
-        customerID = cnx.fetchone()['MAX(id)'] + 1
+        customerID = cnx.fetchone()['MAX(id)'] + 1  # Although it's already autoincremented we need this variable for when inserting into Orders
 
         cnx.execute(
                 '''INSERT INTO Customers
@@ -363,10 +363,14 @@ def write_order(order):
         #     product['subtype'], product['color'], product['gender'],
         #     product['price'], product['size'], item['amount']
         # ]
-        cnx.execute('''INSERT INTO Orders
-                    VALUES ({}, {}, {}, {});'''.format(
-                        orderID, customerID, item['id'], item['amount']
-                    )
+        cnx.execute('''INSERT INTO Orders (orderid, productid, amount)
+                    VALUES ({}, {}, {});'''.format(
+                        orderID, item['id'], item['amount']
+                    ) +
+                    ''';INSERT INTO OrderDetails (orderid, custuomerid)
+                    VALUES ({}, {});'''.format(
+                        orderID, customerID
+                    ), multi=True
                 )
     
     # Debugging
