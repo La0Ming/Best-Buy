@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
-"""GROUP 44: Johnny Nguyen & Majid Mohammed Hamid"""
+"""GROUP 44: Johnny Nguyen & Majid Mohamed Hamid"""
 
 from os import path
 from inspect import currentframe, getfile
 import mysql.connector as mysql
-import var
+import mysql_details
 import pandas as pd
 
 cmd_folder = path.realpath(
@@ -47,16 +47,16 @@ def get_products_filtered(categories=None):
 
     #return df.to_dict('records')
     ''' SQL '''
-    connection = mysql.connect(user=var.MYSQL_USER,
-                        passwd=var.MYSQL_PASS,
-                        database=var.MYSQL_DATABASE, 
+    connection = mysql.connect(user=mysql_details.MYSQL_USER,
+                        passwd=mysql_details.MYSQL_PASS,
+                        database=mysql_details.MYSQL_DATABASE,
                         host='127.0.0.1')
 
     cnx = connection.cursor(dictionary=True)
     if categories is None:
         cnx.execute('SELECT * FROM Products;')
     else:
-        cnx.execute('SELECT * FROM Products WHERE gender = \'' + categories['gender'] + 
+        cnx.execute('SELECT * FROM Products WHERE gender = \'' + categories['gender'] +
         '\' AND type = \'' + categories['type'] +
         '\' AND subtype = \'' + categories['subtype'] + '\'' + ';')
     connection.close()
@@ -96,9 +96,9 @@ def get_products_search(values):
 
     # return df.to_dict('records')
     ''' SQL '''
-    connection = mysql.connect(user=var.MYSQL_USER,
-                           passwd=var.MYSQL_PASS,
-                           database=var.MYSQL_DATABASE, 
+    connection = mysql.connect(user=mysql_details.MYSQL_USER,
+                           passwd=mysql_details.MYSQL_PASS,
+                           database=mysql_details.MYSQL_DATABASE,
                            host='127.0.0.1')
 
     cnx = connection.cursor(dictionary=True, buffered=True)
@@ -144,9 +144,9 @@ def get_products_ids(ids):
 
     # return df.to_dict('records')
     ''' SQL '''
-    connection = mysql.connect(user=var.MYSQL_USER,
-                           passwd=var.MYSQL_PASS,
-                           database=var.MYSQL_DATABASE, 
+    connection = mysql.connect(user=mysql_details.MYSQL_USER,
+                           passwd=mysql_details.MYSQL_PASS,
+                           database=mysql_details.MYSQL_DATABASE,
                            host='127.0.0.1')
 
     cnx = connection.cursor(dictionary=True)
@@ -191,9 +191,9 @@ def get_categories():
     #     'name': name
     # } for name in types[1]]]
     ''' SQL '''
-    connection = mysql.connect(user=var.MYSQL_USER,
-                           passwd=var.MYSQL_PASS,
-                           database=var.MYSQL_DATABASE, 
+    connection = mysql.connect(user=mysql_details.MYSQL_USER,
+                           passwd=mysql_details.MYSQL_PASS,
+                           database=mysql_details.MYSQL_DATABASE,
                            host='127.0.0.1')
 
     cnx = connection.cursor(dictionary=True)
@@ -255,9 +255,9 @@ def get_subcategories(gender, category):
     # children = [{'url': '', 'name': name} for name in types]
     # result = [{'gender': gender, 'category': category, 'children': children}]
     ''' SQL '''
-    connection = mysql.connect(user=var.MYSQL_USER,
-                           passwd=var.MYSQL_PASS,
-                           database=var.MYSQL_DATABASE, 
+    connection = mysql.connect(user=mysql_details.MYSQL_USER,
+                           passwd=mysql_details.MYSQL_PASS,
+                           database=mysql_details.MYSQL_DATABASE,
                            host='127.0.0.1')
 
     cnx = connection.cursor(dictionary=True)
@@ -289,9 +289,9 @@ def write_order(order):
         köpt 1 styck av produkt 1, 2 styck av produkt 2, och 1 styck av
         produkt 3.
     """
-    connection = mysql.connect(user=var.MYSQL_USER,
-                           passwd=var.MYSQL_PASS,
-                           database=var.MYSQL_DATABASE, 
+    connection = mysql.connect(user=mysql_details.MYSQL_USER,
+                           passwd=mysql_details.MYSQL_PASS,
+                           database=mysql_details.MYSQL_DATABASE,
                            host='127.0.0.1')
 
     cnx = connection.cursor(dictionary=True, buffered=True)
@@ -338,10 +338,10 @@ def write_order(order):
     '\' AND city = \'' + town +
     '\' AND zipcode = ' + zipcode + ';'
     )
-    customerID = cnx.fetchone()
+    customerID = cnx.fetchall()
 
     # If the customer does not already exist in the DB, make a new entry
-    if customerID is None:
+    if customerID == []:
         # Get new customer ID
         cnx.execute('SELECT MAX(id) FROM Customers;')
         customerID = cnx.fetchone()['MAX(id)'] + 1  # Although it's already autoincremented we need this variable for when inserting into Orders
@@ -351,6 +351,7 @@ def write_order(order):
                 VALUES ('{}', '{}', '{}', '{}', '{}', '{}', '{}');'''.format(
                 firstname, lastname, address, town, zipcode, customerID, email
         ))
+        connection.commit()
 
     # Write the actual order
     #df_products = pd.read_csv(cmd_folder + 'data/Products.csv')
@@ -366,18 +367,15 @@ def write_order(order):
         cnx.execute('''INSERT INTO Orders (orderid, productid, amount)
                     VALUES ({}, {}, {});'''.format(
                         orderID, item['id'], item['amount']
-                    ) +
-                    ''';INSERT INTO OrderDetails (orderid, custuomerid)
-                    VALUES ({}, {});'''.format(
-                        orderID, customerID
-                    ), multi=True
+                    )
                 )
-    
-    # Debugging
-    # cnx.execute('''SELECT * FROM Customers''')
-    # cnx.execute('''SELECT * FROM Orders''')
-    # for row in cnx:
-    #     print(row)
+        connection.commit()
+        cnx.execute('''INSERT INTO OrderDetails (orderid, customerid)
+            VALUES ({}, {});'''.format(
+                orderID, customerID
+            )
+        )
+        connection.commit()
 
     #df_orders.to_csv(cmd_folder + 'data/Orders.csv', index=False, encoding='utf-8')
     connection.close()
@@ -413,9 +411,9 @@ def get_20_most_popular():
 
     # return df.iloc[top20_ids, :].to_dict('records')
     ''' SQL '''
-    connection = mysql.connect(user=var.MYSQL_USER,
-                           passwd=var.MYSQL_PASS,
-                           database=var.MYSQL_DATABASE, 
+    connection = mysql.connect(user=mysql_details.MYSQL_USER,
+                           passwd=mysql_details.MYSQL_PASS,
+                           database=mysql_details.MYSQL_DATABASE,
                            host='127.0.0.1')
 
     cnx = connection.cursor(dictionary=True)
