@@ -338,10 +338,10 @@ def write_order(order):
     '\' AND city = \'' + town +
     '\' AND zipcode = ' + zipcode + ';'
     )
-    customerID = cnx.fetchall()
+    customerID = cnx.fetchone()['id']
 
     # If the customer does not already exist in the DB, make a new entry
-    if customerID == []:
+    if customerID is None:
         # Get new customer ID
         cnx.execute('SELECT MAX(id) FROM Customers;')
         customerID = cnx.fetchone()['MAX(id)'] + 1  # Although it's already autoincremented we need this variable for when inserting into Orders
@@ -431,6 +431,14 @@ def get_20_most_popular():
             'SELECT * FROM Products WHERE id = {};'.format(row['productid'])
             )
         result += cnx.fetchall()
+
+    '''Debugging'''
+    cnx.execute('''SELECT * FROM Customers''')
+    for row in cnx:
+        print(row)
+    cnx.execute('''SELECT * FROM OrderDetails''')
+    for row in cnx:
+        print(row)
 
     connection.close()
     return result
