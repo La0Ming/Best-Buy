@@ -338,7 +338,7 @@ def write_order(order):
     '\' AND city = \'' + town +
     '\' AND zipcode = ' + zipcode + ';'
     )
-    customerID = cnx.fetchone()['id']
+    customerID = cnx.fetchone()
 
     # If the customer does not already exist in the DB, make a new entry
     if customerID is None:
@@ -352,6 +352,8 @@ def write_order(order):
                 firstname, lastname, address, town, zipcode, customerID, email
         ))
         connection.commit()
+    else:
+        customerID = customerID['id']
 
     # Write the actual order
     #df_products = pd.read_csv(cmd_folder + 'data/Products.csv')
@@ -431,14 +433,6 @@ def get_20_most_popular():
             'SELECT * FROM Products WHERE id = {};'.format(row['productid'])
             )
         result += cnx.fetchall()
-
-    '''Debugging'''
-    cnx.execute('''SELECT * FROM Customers''')
-    for row in cnx:
-        print(row)
-    cnx.execute('''SELECT * FROM OrderDetails''')
-    for row in cnx:
-        print(row)
 
     connection.close()
     return result
